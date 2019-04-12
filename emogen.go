@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/gomodule/redigo/redis"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
@@ -25,31 +27,45 @@ func getEmojis(number, length uint) string {
 	return fmt.Sprintf("%s%s%s", emojis[emoji1], emojis[emoji2], emojis[emoji3])
 }
 
-func setupRouter(r *gin.Engine) {
-	r.GET("/r/:link", func(c *gin.Context) {
+func getEmogenNr(c redis.Conn) uint {
+	nr, err := redis.Int(c.Do("GET", "emogen:nr"))
+	if err != nil {
+		log.Printf("emogen:nr is not initialized (%s), initializing to 0", err)
+		return 0
+	}
+
+	log.Printf("emogen:nr is %d", nr)
+	return uint(nr)
+}
+
+func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
+	engine.GET("/r/:link", func(c *gin.Context) {
 		link := c.Param("link")
-		fmt.Printf("link is %s\n", link)
+		log.Printf("link is %s\n", link)
 
 		// TODO: lookup link, if found 301, if not 404
 		c.Redirect(http.StatusMovedPermanently, "https://google.com/")
 	})
 
-	r.POST("/r", func(c *gin.Context) {
+	engine.POST("/r", func(c *gin.Context) {
 		link := c.PostForm("link")
-		fmt.Printf("link is %s\n", link)
-
-		var increment uint = 1295200259 // TODO explain
+		log.Printf("link is %s\n", link)
 
 		// TODO temp
-		var currentEmojiNumber uint = 0
-		currentEmojiNumber += increment
+		currentEmojiNumber := getEmogenNr(redisConn)
 
-		emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
+		emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))  // TODO is constant
+		const increment = 1295200259 // TODO explain
+		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, increment, currentEmojiNumber)
 
 		shortLink := fmt.Sprintf("/r/%s", getEmojis(currentEmojiNumber, uint(len(emojis))))
 
-		nextEmojiNumber := getNextEmojiNumber(emojiNumberMax, increment, currentEmojiNumber)
-		currentEmojiNumber = nextEmojiNumber // todo temp
+		_, err := redisConn.Do("SET", "emogen:nr", currentEmojiNumber)
+		if err != nil {
+			log.Printf("Error while storing emogen:nr: %s\n", err)
+			c.JSON(500, "Failed connecting to db.")
+			return
+		}
 
 		c.JSON(200, gin.H{
 			"link": shortLink,
@@ -58,6 +74,9 @@ func setupRouter(r *gin.Engine) {
 }
 
 func setup() {
+	log.SetPrefix("[EMOGEN] ")
+	log.Printf("Starting up...")
+
 	// I could shuffle emojis.go manually but I'm too lazy. The
 	// constant seed ensures the shuffling always produces the same
 	// result.
@@ -65,12 +84,27 @@ func setup() {
 	rand.Seed(mySeed)
 	rand.Shuffle(len(emojis), func(i, j int) { emojis[i], emojis[j] = emojis[j], emojis[i] })
 
-	fmt.Printf("Prepared %d emojis\n", len(emojis))
+	log.Printf("Prepared %d emojis\n", len(emojis))
+}
+
+func setupRedis() redis.Conn {
+	c, err := redis.Dial("tcp", ":6379")
+	if err != nil {
+		log.Fatalf("Could not connect to redis (%s)\n", err)
+	}
+
+	return c
 }
 
 func main() {
 	setup()
-	r := gin.Default()
-	setupRouter(r)
-	r.Run() // listen and serve on 0.0.0.0:8080
+
+	redisConn := setupRedis()
+	defer redisConn.Close()
+
+	engine := gin.Default()
+
+	setupRouter(engine, redisConn)
+
+	engine.Run() // listen and serve on 0.0.0.0:8080
 }
