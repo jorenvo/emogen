@@ -39,28 +39,41 @@ func getEmogenNr(c redis.Conn) uint {
 }
 
 func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
+	// This is a large prime. Using a prime as the increment for
+	// getNextEmojiNumber will make it loop through all numbers.
+	const emojiNumberIncrement = 1295200259
+
+	emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
+
 	engine.GET("/r/:link", func(c *gin.Context) {
 		link := c.Param("link")
-		log.Printf("link is %s\n", link)
+		log.Printf("resolving %s\n", link)
 
-		// TODO: lookup link, if found 301, if not 404
-		c.Redirect(http.StatusMovedPermanently, "https://google.com/")
+		// TODO should link be sanitized somehow like is necessary for SQL?
+		link, err := redis.String(redisConn.Do("GET", "link:"+link))
+		if err != nil {
+			link = "/r/notfound"
+		}
+
+		c.Redirect(http.StatusMovedPermanently, link)
 	})
 
 	engine.POST("/r", func(c *gin.Context) {
 		link := c.PostForm("link")
-		log.Printf("link is %s\n", link)
+		log.Printf("shortening %s\n", link)
 
-		// TODO temp
 		currentEmojiNumber := getEmogenNr(redisConn)
+		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, emojiNumberIncrement, currentEmojiNumber)
 
-		emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))  // TODO is constant
-		const increment = 1295200259 // TODO explain
-		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, increment, currentEmojiNumber)
+		shortLink := getEmojis(currentEmojiNumber, uint(len(emojis)))
+		_, err := redisConn.Do("SET", "link:"+shortLink, link)
+		if err != nil {
+			log.Printf("Error while storing link %s -> %s (%s)\n", shortLink, link, err)
+			c.JSON(500, "Failed connecting to db.")
+			return
+		}
 
-		shortLink := fmt.Sprintf("/r/%s", getEmojis(currentEmojiNumber, uint(len(emojis))))
-
-		_, err := redisConn.Do("SET", "emogen:nr", currentEmojiNumber)
+		_, err = redisConn.Do("SET", "emogen:nr", currentEmojiNumber)
 		if err != nil {
 			log.Printf("Error while storing emogen:nr: %s\n", err)
 			c.JSON(500, "Failed connecting to db.")
@@ -68,7 +81,7 @@ func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
 		}
 
 		c.JSON(200, gin.H{
-			"link": shortLink,
+			"link": "/r/%s" + shortLink,
 		})
 	})
 }
