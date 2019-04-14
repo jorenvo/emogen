@@ -54,7 +54,6 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		link := c.Param("link")
 		log.Printf("resolving %s\n", link)
 
-		// TODO should link be sanitized somehow like is necessary for SQL?
 		link, err := redis.String(redisConn.Do("GET", "link:"+link))
 		if err != nil {
 			link = "/notfound"
@@ -76,10 +75,11 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, emojiNumberIncrement, currentEmojiNumber)
 
 		shortLink := getEmojis(currentEmojiNumber, uint(len(emojis)))
+
 		_, err := redisConn.Do("SET", "link:"+shortLink, link)
 		if err != nil {
 			log.Printf("Error while storing link %s -> %s (%s)\n", shortLink, link, err)
-			c.JSON(500, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed connecting to db.",
 			})
 			return
@@ -88,7 +88,7 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		_, err = redisConn.Do("SET", "emogen:nr", currentEmojiNumber)
 		if err != nil {
 			log.Printf("Error while storing emogen:nr: %s\n", err)
-			c.JSON(500, gin.H{
+			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed connecting to db.",
 			})
 			return
