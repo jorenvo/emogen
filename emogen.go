@@ -45,20 +45,20 @@ func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
 
 	emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
 
-	engine.GET("/r/:link", func(c *gin.Context) {
+	engine.GET("/:link", func(c *gin.Context) {
 		link := c.Param("link")
 		log.Printf("resolving %s\n", link)
 
 		// TODO should link be sanitized somehow like is necessary for SQL?
 		link, err := redis.String(redisConn.Do("GET", "link:"+link))
 		if err != nil {
-			link = "/r/notfound"
+			link = "/notfound"
 		}
 
 		c.Redirect(http.StatusMovedPermanently, link)
 	})
 
-	engine.POST("/r", func(c *gin.Context) {
+	engine.POST("/", func(c *gin.Context) {
 		link := c.PostForm("link")
 		log.Printf("shortening %s\n", link)
 
@@ -81,7 +81,7 @@ func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
 		}
 
 		c.JSON(200, gin.H{
-			"link": "/r/%s" + shortLink,
+			"link": "/%s" + shortLink,
 		})
 	})
 }
