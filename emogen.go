@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
 	"log"
@@ -38,14 +39,18 @@ func getEmogenNr(c redis.Conn) uint {
 	return uint(nr)
 }
 
-func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
+type ToShorten struct {
+	Link string `json:"link" binding:"required"`
+}
+
+func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 	// This is a large prime. Using a prime as the increment for
 	// getNextEmojiNumber will make it loop through all numbers.
 	const emojiNumberIncrement = 1295200259
 
 	emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
 
-	engine.GET("/:link", func(c *gin.Context) {
+	router.GET("/:link", func(c *gin.Context) {
 		link := c.Param("link")
 		log.Printf("resolving %s\n", link)
 
@@ -58,8 +63,13 @@ func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
 		c.Redirect(http.StatusMovedPermanently, link)
 	})
 
-	engine.POST("/", func(c *gin.Context) {
-		link := c.PostForm("link")
+	router.POST("/", func(c *gin.Context) {
+		var toShorten ToShorten
+		if err := c.ShouldBindJSON(&toShorten); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		link := toShorten.Link
 		log.Printf("shortening %s\n", link)
 
 		currentEmojiNumber := getEmogenNr(redisConn)
@@ -69,19 +79,23 @@ func setupRouter(engine *gin.Engine, redisConn redis.Conn) {
 		_, err := redisConn.Do("SET", "link:"+shortLink, link)
 		if err != nil {
 			log.Printf("Error while storing link %s -> %s (%s)\n", shortLink, link, err)
-			c.JSON(500, "Failed connecting to db.")
+			c.JSON(500, gin.H{
+				"error": "Failed connecting to db.",
+			})
 			return
 		}
 
 		_, err = redisConn.Do("SET", "emogen:nr", currentEmojiNumber)
 		if err != nil {
 			log.Printf("Error while storing emogen:nr: %s\n", err)
-			c.JSON(500, "Failed connecting to db.")
+			c.JSON(500, gin.H{
+				"error": "Failed connecting to db.",
+			})
 			return
 		}
 
 		c.JSON(200, gin.H{
-			"link": "/%s" + shortLink,
+			"link": "/" + shortLink,
 		})
 	})
 }
@@ -115,9 +129,10 @@ func main() {
 	redisConn := setupRedis()
 	defer redisConn.Close()
 
-	engine := gin.Default()
+	router := gin.Default()
+	router.Use(cors.Default())
 
-	setupRouter(engine, redisConn)
+	setupRouter(router, redisConn)
 
-	engine.Run() // listen and serve on 0.0.0.0:8080
+	router.Run() // listen and serve on 0.0.0.0:8080
 }
