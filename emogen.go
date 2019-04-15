@@ -54,7 +54,7 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		link := c.Param("link")
 		log.Printf("resolving %s\n", link)
 
-		link, err := redis.String(redisConn.Do("GET", "link:"+link))
+		link, err := redis.String(redisConn.Do("GET", "shortlink:"+link))
 		if err != nil {
 			link = "/notfound"
 		}
@@ -71,16 +71,31 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		link := toShorten.Link
 		log.Printf("shortening %s\n", link)
 
-		// TODO check if link has already been shortened and return that
+		shortLink, err := redis.String(redisConn.Do("GET", "link:"+link))
+		if err == nil {
+			c.JSON(200, gin.H{
+				"link": "/" + shortLink,
+			})
+			return
+		}
 
 		currentEmojiNumber := getEmogenNr(redisConn)
 		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, emojiNumberIncrement, currentEmojiNumber)
 
-		shortLink := getEmojis(currentEmojiNumber, uint(len(emojis)))
+		shortLink = getEmojis(currentEmojiNumber, uint(len(emojis)))
 
-		_, err := redisConn.Do("SET", "link:"+shortLink, link)
+		_, err = redisConn.Do("SET", "shortlink:"+shortLink, link)
 		if err != nil {
 			log.Printf("Error while storing link %s -> %s (%s)\n", shortLink, link, err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed connecting to db.",
+			})
+			return
+		}
+
+		_, err = redisConn.Do("SET", "link:"+link, shortLink)
+		if err != nil {
+			log.Printf("Error while storing link %s -> %s (%s)\n", link, shortLink, err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed connecting to db.",
 			})
