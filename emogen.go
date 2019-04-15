@@ -71,6 +71,8 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		link := toShorten.Link
 		log.Printf("shortening %s\n", link)
 
+		// TODO check if link has already been shortened and return that
+
 		currentEmojiNumber := getEmogenNr(redisConn)
 		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, emojiNumberIncrement, currentEmojiNumber)
 
