@@ -9,7 +9,6 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
-	"net/url"
 )
 
 func getNextEmojiNumber(length, increment, current uint) uint {
@@ -55,15 +54,9 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 		link := c.Param("link")
 		log.Printf("resolving %s\n", link)
 
-		link, err := url.QueryUnescape(link)
+		link, err := redis.String(redisConn.Do("GET", "shortlink:"+link))
 		if err != nil {
-			log.Printf("Error while unescaping string: %s", err)
-			return
-		}
-
-		link, err = redis.String(redisConn.Do("GET", "shortlink:"+link))
-		if err != nil {
-			link = "/"
+			link = "/notfound"
 		}
 
 		c.Redirect(http.StatusMovedPermanently, link)
