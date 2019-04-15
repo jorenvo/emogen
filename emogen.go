@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"strings"
 )
 
 func getNextEmojiNumber(length, increment, current uint) uint {
@@ -77,6 +78,11 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 				"link": "/" + shortLink,
 			})
 			return
+		}
+
+		if !strings.HasPrefix(link, "http") {
+			log.Printf("link %s did not specify http\n", link)
+			link = "http://" + link
 		}
 
 		currentEmojiNumber := getEmogenNr(redisConn)
