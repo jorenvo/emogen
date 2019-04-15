@@ -56,7 +56,7 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 
 		link, err := redis.String(redisConn.Do("GET", "shortlink:"+link))
 		if err != nil {
-			link = "/notfound"
+			link = "/"
 		}
 
 		c.Redirect(http.StatusMovedPermanently, link)
