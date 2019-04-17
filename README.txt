@@ -20,3 +20,9 @@ Generate one number that will be used to find 3 emoji's for a
 URL. It's range is [0, 1431**3]. For a number n the first emoji is n %
 1431, second is (n // 1431) % 1431 and the last is (n // 1431 // 1431)
 % 1431.
+
+Redis is used as the database because it's easy to setup and our
+database needs are simple. Redis' save option is sufficient for
+persistence and backups. With Redis' default configuration a maximum
+of 15 minutes of data could be lost. This is acceptable because we're
+just shortening links and this is a toy project.
