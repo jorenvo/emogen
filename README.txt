@@ -1,10 +1,11 @@
-This is a link shortener that shortens links using UTF-8 emojis
+This is a link shortener that shortens links using UTF-8 emojis. A
+live demo with emogen-frontend is available at https://www.jvo.sh/r/.
 
 API
 ---
-/r POST with link=https://example.com
+/r POST with {link: "https://example.com"} returns {link: "/🙃🐰🦊"}
 
-/r/🐯🐁🙃 GET 301 redirects to https://example.com
+/r/🙃🐰🦊 GET 301 redirects to https://example.com
 
 Docs
 ----
