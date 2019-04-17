@@ -26,3 +26,11 @@ database needs are simple. Redis' save option is sufficient for
 persistence and backups. With Redis' default configuration a maximum
 of 15 minutes of data could be lost. This is acceptable because we're
 just shortening links and this is a toy project.
+
+Todo
+----
+Make Redis connections threadsafe. Currently a single redis.Conn is
+used. This is not threadsafe which is problematic because gin will
+spawn threads to handle requests. Solve this by using a redis pool:
+
+https://stackoverflow.com/questions/37178897/some-questions-about-redigo-and-concurrency
