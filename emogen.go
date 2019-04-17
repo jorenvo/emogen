@@ -65,14 +65,14 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 	emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
 
 	router.GET("/:link", func(c *gin.Context) {
-		link := c.Param("link")
-		log.Printf("resolving %s\n", link)
+		shortlink := c.Param("link")
 
-		link, err := redis.String(redisConn.Do("GET", "shortlink:"+link))
+		link, err := redis.String(redisConn.Do("GET", "shortlink:"+shortlink))
 		if err != nil {
 			link = "/"
 		}
 
+		log.Printf("resolving %s to %s\n", shortlink, link)
 		c.Redirect(http.StatusMovedPermanently, link)
 	})
 
