@@ -53,7 +53,7 @@ func getEmogenNr(c redis.Conn) uint {
 	return uint(nr)
 }
 
-type ToShorten struct {
+type toShorten struct {
 	Link string `json:"link" binding:"required"`
 }
 
@@ -77,12 +77,12 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 	})
 
 	router.POST("/", func(c *gin.Context) {
-		var toShorten ToShorten
-		if err := c.ShouldBindJSON(&toShorten); err != nil {
+		var json toShorten
+		if err := c.ShouldBindJSON(&json); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		link := toShorten.Link
+		link := json.Link
 		log.Printf("shortening %s\n", link)
 
 		shortLink, err := redis.String(redisConn.Do("GET", "link:"+link))
