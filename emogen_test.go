@@ -34,7 +34,7 @@ func testIncrementOverNumbers(t *testing.T, increment uint, currentNumber uint, 
 
 func TestGetNextEmojiEven(t *testing.T) {
 	numbers := make([]bool, 128)
-	var currentNumber uint = 0
+	var currentNumber uint
 	var increment uint = 41
 
 	testIncrementOverNumbers(t, increment, currentNumber, numbers)
@@ -42,7 +42,7 @@ func TestGetNextEmojiEven(t *testing.T) {
 
 func TestGetNextEmojiOdd(t *testing.T) {
 	numbers := make([]bool, 129)
-	var currentNumber uint = 0
+	var currentNumber uint
 	var increment uint = 71
 
 	testIncrementOverNumbers(t, increment, currentNumber, numbers)
@@ -51,8 +51,8 @@ func TestGetNextEmojiOdd(t *testing.T) {
 func TestGetEmojis1(t *testing.T) {
 	// For a 9 bit number we would have 3 groups of 3 bits each. The
 	// max number in each group is 2^3.
-	var length uint = uint(math.Pow(float64(2), float64(3)))
 	var number uint = 5 << 6 | 6 << 3 | 7
+	length := uint(math.Pow(float64(2), float64(3)))
 
 	n1, n2, n3 := getEmojiNumbers(number, length)
 
@@ -72,8 +72,8 @@ func TestGetEmojis1(t *testing.T) {
 func TestGetEmojis2(t *testing.T) {
 	// For a 9 bit number we would have 3 groups of 3 bits each. The
 	// max number in each group is 2^3.
-	var length uint = uint(math.Pow(float64(2), float64(3)))
 	var number uint = 7 << 6 | 7 << 3 | 7
+	length := uint(math.Pow(float64(2), float64(3)))
 
 	n1, n2, n3 := getEmojiNumbers(number, length)
 
