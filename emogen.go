@@ -57,7 +57,7 @@ type toShorten struct {
 	Link string `json:"link" binding:"required"`
 }
 
-func setupRouter(router *gin.Engine, redisConn redis.Conn) {
+func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 	// This is a large prime. Using a prime as the increment for
 	// getNextEmojiNumber will make it loop through all numbers.
 	const emojiNumberIncrement = 1295200259
@@ -65,6 +65,9 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 	emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
 
 	router.GET("/:link", func(c *gin.Context) {
+		redisConn := redisPool.Get()
+		defer redisConn.Close()
+
 		shortlink := c.Param("link")
 
 		link, err := redis.String(redisConn.Do("GET", "shortlink:"+shortlink))
@@ -77,6 +80,9 @@ func setupRouter(router *gin.Engine, redisConn redis.Conn) {
 	})
 
 	router.POST("/", func(c *gin.Context) {
+		redisConn := redisPool.Get()
+		defer redisConn.Close()
+
 		var json toShorten
 		if err := c.ShouldBindJSON(&json); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -150,25 +156,30 @@ func setup() {
 	log.Printf("Prepared %d emojis\n", len(emojis))
 }
 
-func setupRedis() redis.Conn {
-	c, err := redis.Dial("tcp", ":6379")
-	if err != nil {
-		log.Fatalf("Could not connect to redis (%s)\n", err)
+func setupRedis() redis.Pool {
+	return redis.Pool{
+		MaxIdle:   8,
+		MaxActive: 16,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", ":6379")
+			if err != nil {
+				log.Fatalf("Could not connect to redis (%s)\n", err)
+			}
+			return c, err
+		},
 	}
-
-	return c
 }
 
 func main() {
 	setup()
 
-	redisConn := setupRedis()
-	defer redisConn.Close()
+	redisPool := setupRedis()
+	defer redisPool.Close()
 
 	router := gin.Default()
 	router.Use(cors.Default())
 
-	setupRouter(router, redisConn)
+	setupRouter(router, &redisPool)
 
 	router.Run() // listen and serve on 0.0.0.0:8080
 }
