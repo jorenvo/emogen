@@ -49,8 +49,8 @@ func getEmojis(redisPool *redis.Pool, length uint) string {
 
 	for {
 		newEmojis := randomEmojiString(length)
-		_, err := getShortLink(redisConn, newEmojis)
-		if err == nil {
+		link, _ := getShortLink(redisConn, newEmojis)
+		if link != "" {
 			log.Printf("collision for %s, retrying...\n", newEmojis)
 		} else {
 			return newEmojis
