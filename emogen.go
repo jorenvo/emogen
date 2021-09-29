@@ -25,32 +25,13 @@ import (
 	"strings"
 )
 
-func getNextEmojiNumber(length, increment, current uint) uint {
-	return (current + increment) % length
+func randomIndex(length uint) int {
+	index := math.Floor(rand.Float64() * float64(length))
+	return int(index)
 }
 
-func getEmojiNumbers(number, length uint) (uint, uint, uint) {
-	n1 := number % length
-	n2 := (number / length) % length
-	n3 := number / length / length
-
-	return n1, n2, n3
-}
-
-func getEmojis(number, length uint) string {
-	emoji1, emoji2, emoji3 := getEmojiNumbers(number, length)
-	return fmt.Sprintf("%s%s%s", emojis[emoji1], emojis[emoji2], emojis[emoji3])
-}
-
-func getEmogenNr(c redis.Conn) uint {
-	nr, err := redis.Int(c.Do("GET", "emogen:nr"))
-	if err != nil {
-		log.Printf("emogen:nr is not initialized (%s), initializing to 0", err)
-		return 0
-	}
-
-	log.Printf("emogen:nr is %d", nr)
-	return uint(nr)
+func getEmojis(length uint) string {
+	return fmt.Sprintf("%s%s%s", emojis[randomIndex(length)], emojis[randomIndex(length)], emojis[randomIndex(length)])
 }
 
 type toShorten struct {
@@ -58,12 +39,6 @@ type toShorten struct {
 }
 
 func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
-	// This is a large prime. Using a prime as the increment for
-	// getNextEmojiNumber will make it loop through all numbers.
-	const emojiNumberIncrement = 1295200259
-
-	emojiNumberMax := uint(math.Pow(float64(len(emojis)), 3))
-
 	router.GET("/:link", func(c *gin.Context) {
 		redisConn := redisPool.Get()
 		defer redisConn.Close()
@@ -104,10 +79,7 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 			link = "http://" + link
 		}
 
-		currentEmojiNumber := getEmogenNr(redisConn)
-		currentEmojiNumber = getNextEmojiNumber(emojiNumberMax, emojiNumberIncrement, currentEmojiNumber)
-
-		shortLink = getEmojis(currentEmojiNumber, uint(len(emojis)))
+		shortLink = getEmojis(uint(len(emojis)))
 
 		_, err = redisConn.Do("SET", "shortlink:"+shortLink, link)
 		if err != nil {
@@ -121,15 +93,6 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 		_, err = redisConn.Do("SET", "link:"+link, shortLink)
 		if err != nil {
 			log.Printf("Error while storing link %s -> %s (%s)\n", link, shortLink, err)
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed connecting to db.",
-			})
-			return
-		}
-
-		_, err = redisConn.Do("SET", "emogen:nr", currentEmojiNumber)
-		if err != nil {
-			log.Printf("Error while storing emogen:nr: %s\n", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "Failed connecting to db.",
 			})
