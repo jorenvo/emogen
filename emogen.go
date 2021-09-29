@@ -30,7 +30,7 @@ func randomIndex(length uint) int {
 	return int(index)
 }
 
-func getShortLink(shortlink string, redisConn redis.Conn) (string, error) {
+func getShortLink(redisConn redis.Conn, shortlink string) (string, error) {
 	return redis.String(redisConn.Do("GET", "shortlink:"+shortlink))
 }
 
@@ -43,13 +43,13 @@ func randomEmojiString(length uint) string {
 	)
 }
 
-func getEmojis(length uint, redisPool *redis.Pool) string {
+func getEmojis(redisPool *redis.Pool, length uint) string {
 	redisConn := redisPool.Get()
 	defer redisConn.Close()
 
 	for {
 		newEmojis := randomEmojiString(length)
-		_, err := getShortLink(newEmojis, redisConn)
+		_, err := getShortLink(redisConn, newEmojis)
 		if err == nil {
 			log.Printf("collision for %s, retrying...\n", newEmojis)
 		} else {
@@ -69,7 +69,7 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 
 		shortlink := c.Param("link")
 
-		link, err := getShortLink(shortlink, redisConn)
+		link, err := getShortLink(redisConn, shortlink)
 		if err != nil {
 			link = "/"
 		}
@@ -103,7 +103,7 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 			link = "http://" + link
 		}
 
-		shortLink = getEmojis(uint(len(emojis)), redisPool)
+		shortLink = getEmojis(redisPool, uint(len(emojis)))
 
 		_, err = redisConn.Do("SET", "shortlink:"+shortLink, link)
 		if err != nil {
