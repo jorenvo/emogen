@@ -25,7 +25,7 @@ func TestRandomRange(t *testing.T) {
 		x := randomIndex(uint(length))
 		if x < 0 || x >= length {
 			t.Errorf("%d is out of range", x)
-			break;
+			break
 		}
 	}
 }
