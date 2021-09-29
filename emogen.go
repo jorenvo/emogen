@@ -132,14 +132,6 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 func setup() {
 	log.SetPrefix("[EMOGEN] ")
 	log.Printf("Starting up...")
-
-	// I could shuffle emojis.go manually but I'm too lazy. The
-	// constant seed ensures the shuffling always produces the same
-	// result.
-	const mySeed = 42861292382474619
-	rand.Seed(mySeed)
-	rand.Shuffle(len(emojis), func(i, j int) { emojis[i], emojis[j] = emojis[j], emojis[i] })
-
 	log.Printf("Prepared %d emojis\n", len(emojis))
 }
 
