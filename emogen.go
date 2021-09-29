@@ -30,13 +30,28 @@ func randomIndex(length uint) int {
 	return int(index)
 }
 
-func getEmojis(length uint) string {
+func randomEmojiString(length uint) string {
 	return fmt.Sprintf(
 		"%s%s%s",
 		emojis[randomIndex(length)],
 		emojis[randomIndex(length)],
 		emojis[randomIndex(length)],
 	)
+}
+
+func getEmojis(length uint, redisPool *redis.Pool) string {
+	redisConn := redisPool.Get()
+	defer redisConn.Close()
+
+	for {
+		newEmojis := randomEmojiString(length)
+		_, err := redis.String(redisConn.Do("GET", "shortlink:"+newEmojis))
+		if err == nil {
+			log.Printf("collision for %s, retrying...\n", newEmojis)
+		} else {
+			return newEmojis
+		}
+	}
 }
 
 type toShorten struct {
@@ -84,7 +99,7 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 			link = "http://" + link
 		}
 
-		shortLink = getEmojis(uint(len(emojis)))
+		shortLink = getEmojis(uint(len(emojis)), redisPool)
 
 		_, err = redisConn.Do("SET", "shortlink:"+shortLink, link)
 		if err != nil {
