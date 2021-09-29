@@ -31,7 +31,12 @@ func randomIndex(length uint) int {
 }
 
 func getEmojis(length uint) string {
-	return fmt.Sprintf("%s%s%s", emojis[randomIndex(length)], emojis[randomIndex(length)], emojis[randomIndex(length)])
+	return fmt.Sprintf(
+		"%s%s%s",
+		emojis[randomIndex(length)],
+		emojis[randomIndex(length)],
+		emojis[randomIndex(length)],
+	)
 }
 
 type toShorten struct {
