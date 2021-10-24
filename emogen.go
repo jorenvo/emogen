@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func randomIndex(length uint) int {
@@ -130,6 +131,7 @@ func setupRouter(router *gin.Engine, redisPool *redis.Pool) {
 }
 
 func setup() {
+	rand.Seed(time.Now().UnixNano())
 	log.SetPrefix("[EMOGEN] ")
 	log.Printf("Starting up...")
 	log.Printf("Prepared %d emojis\n", len(emojis))
