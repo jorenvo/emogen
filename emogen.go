@@ -22,6 +22,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -151,6 +152,20 @@ func setupRedis() redis.Pool {
 	}
 }
 
+func addr() string {
+	ip := os.Getenv("EMOGEN_LOCALHOST_IP")
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+
+	port := os.Getenv("EMOGEN_LOCALHOST_PORT")
+	if port == "" {
+		port = "80"
+	}
+
+	return ip + ":" + port
+}
+
 func main() {
 	setup()
 
@@ -162,5 +177,5 @@ func main() {
 
 	setupRouter(router, &redisPool)
 
-	router.Run() // listen and serve on 0.0.0.0:8080
+	router.Run(addr())
 }
