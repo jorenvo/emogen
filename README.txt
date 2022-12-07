@@ -1,5 +1,4 @@
-This is a link shortener that shortens links using UTF-8 emojis. A
-live demo with emogen-frontend is available at https://www.jvo.sh/r/.
+This is a link shortener that shortens links using UTF-8 emojis.
 
 API
 ---
